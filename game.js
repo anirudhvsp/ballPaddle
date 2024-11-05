@@ -23,9 +23,16 @@ let ball;
 let ball2;
 let bricks;
 let cursors;
+let balls = [];
+
+let ballConfigs = [
+    { x: config.width / 2, y: config.height - 70, texture: 'ball', type: 'black' },
+    { x: config.width / 2, y: 70, texture: 'ballWhite', type: 'white' }
+];
+
 
 const brickHeight = 30;
-const brickWidth = 30;
+const brickWidth = 60;
 function preload() {
     // Create a graphics object to use as the ball
     this.graphics = this.add.graphics();
@@ -45,35 +52,25 @@ function preload() {
 
 function create() {
     // Create the paddle
-    paddle = this.physics.add.image(config.width/2, config.height-50, null).setDisplaySize(100, 20).setImmovable(true);
+    paddle = this.physics.add.image(config.width/2, config.height-25, null).setDisplaySize(150, 25).setImmovable(true);
     paddle.body.allowGravity = false;
     paddle.setDepth(1);
     paddle.setTint(0x000000); // Black paddle
 
-    // Create the ball using the generated texture
-    ball = this.physics.add.image(config.width/2, config.height-70, 'ball');
-    ball.setDisplaySize(20, 20); // Set size to look like a circle
-    ball.setCollideWorldBounds(true);
-    ball.setBounce(1); // Reflective bounce
-    ball.setData('type', "black")
-    ball.setDepth(1);
-    // Initial ball velocity
-    ball.setVelocity(500, -500);
+    this.blackScore = 0; // Initialize black score
+    this.whiteScore = 0; // Initialize white score
+    this.blackScoreText = this.add.text(15, config.height - 55, '0', { fontSize: '32px', fill: '#000000' }); // Bottom left
+    this.whiteScoreText = this.add.text(config.width - 75, 10, ' 0', { fontSize: '32px', fill: '#FFFFFF' }); // Top right
+    this.whiteScoreText.setDepth(1);
+    this.blackScoreText.setDepth(1);
 
-
-    ball2 = this.physics.add.image(config.width/2, 70, 'ballWhite');
-    ball2.setDisplaySize(20, 20); // Set size to look like a circle
-    ball2.setCollideWorldBounds(true);
-    ball2.setBounce(1); // Reflective bounce
-    ball2.setData('type', "white")
-    ball2.setDepth(1);
-    // I2nitial ball velocity
-    ball2.setVelocity(500, -500);
-
+    ballConfigs.forEach(config => {
+        balls.push(createBall(this, config.x, config.y, config.texture, config.type));
+    });
     // Create bricks
     bricks = this.physics.add.staticGroup();
     for (let y = brickHeight/2; y < config.height-brickHeight/2; y += brickHeight) {
-        for (let x = brickWidth/2; x < config.width-brickWidth/2; x += brickWidth) {
+        for (let x = brickWidth/2; x < config.width-brickWidth/3; x += brickWidth) {
             if(y<config.height/2){
                 let brick = this.add.rectangle(x, y, brickWidth, brickHeight, 0x000000);
                 brick.setData('type', "black");
@@ -87,20 +84,33 @@ function create() {
         }
     }
 
-    // Collision between ball and paddle
-    this.physics.add.collider(ball, paddle, hitPaddle, null, this);
-
-    // Collision between ball and bricks
-    this.physics.add.collider(ball, bricks, hitBrick, processCollision, this);
-    this.physics.add.collider(ball2, bricks, hitBrick, processCollision, this);
-
+    balls.forEach(ball => {
+        this.physics.add.collider(ball, paddle, hitPaddle, null, this);
+        this.physics.add.collider(ball, bricks, hitBrick, processCollision, this);
+    });
     // Keyboard controls for paddle
     cursors = this.input.keyboard.addKeys({
         left: Phaser.Input.Keyboard.KeyCodes.A,
         right: Phaser.Input.Keyboard.KeyCodes.D
     });
 }
-
+// Function to create a ball
+function createBall(context, x, y, texture, type) {
+    let ball = context.physics.add.image(x, y, texture);
+    ball.setDisplaySize(20, 20); // Set size to look like a circle
+    ball.setCollideWorldBounds(true);
+    ball.setBounce(1); // Reflective bounce
+    ball.setData('type', type);
+    ball.setDepth(1);
+    if (type === 'white') {
+        const randomX = Phaser.Math.Between(-500, 500); // Random X velocity
+        const randomY = Phaser.Math.Between(-500, -300); // Random Y velocity (upward)
+        ball.setVelocity(randomX, randomY);
+    } else {
+        ball.setVelocity(500, -500); // Initial ball velocity for black balls
+    }
+    return ball;
+}
 function update() {
     // Paddle movement
     if (cursors.left.isDown) {
@@ -122,9 +132,13 @@ function hitBrick(ball, brick) {
         if(brick.getData('type') == "black"){
             brick.setFillStyle(0xFFFFFF);
             brick.setData("type", "white");
+            this.blackScore++; // Increment black score
+            this.blackScoreText.setText(this.blackScore); // Update score display
         } else {
             brick.setFillStyle(0x000000);
             brick.setData("type", "black");
+            this.whiteScore++; // Increment white score
+            this.whiteScoreText.setText(this.whiteScore); // Update score displayd
         }
     }
     else{
