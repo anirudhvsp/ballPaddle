@@ -24,6 +24,12 @@ let ball2;
 let bricks;
 let cursors;
 let balls = [];
+let paddles = [];
+
+let paddleConfigs = [
+    { x: config.width / 2, y: config.height - 25, texture: 'paddleBlack', type: 'black' },
+    { x: config.width / 2, y: 25, texture: 'paddleWhite', type: 'white' }
+];
 
 let ballConfigs = [
     { x: config.width / 2, y: config.height - 70, texture: 'ball', type: 'black' },
@@ -47,15 +53,37 @@ function preload() {
     this.graphics.fillCircle(5, 5, 5);  // Create a 10x10 black circle
     this.graphics.generateTexture('ballWhite', 10, 10);
     this.graphics.destroy();
+    // Add paddle texture generation
+    this.graphics = this.add.graphics();
+    this.graphics.fillStyle(0x000000, 1);
+    this.graphics.fillRect(0, 0, 150, 25);
+    this.graphics.generateTexture('paddleBlack', 150, 25);
+    this.graphics.destroy();
+
+    this.graphics = this.add.graphics();
+    this.graphics.fillStyle(0xFFFFFF, 1);
+    this.graphics.fillRect(0, 0, 150, 25);
+    this.graphics.generateTexture('paddleWhite', 150, 25);
+    this.graphics.destroy();
 }
 
 
 function create() {
-    // Create the paddle
-    paddle = this.physics.add.image(config.width/2, config.height-25, null).setDisplaySize(150, 25).setImmovable(true);
-    paddle.body.allowGravity = false;
-    paddle.setDepth(1);
-    paddle.setTint(0x000000); // Black paddle
+    // Update paddle creation to use textures
+    paddleConfigs.forEach(config => {
+        let paddle = this.physics.add.image(config.x, config.y, config.texture)
+            .setImmovable(true);
+        paddle.body.allowGravity = false;
+        paddle.setDepth(1);
+        paddle.setData('type', config.type);
+        paddles.push(paddle);
+    });
+
+    // Mouse control for black paddle only
+    this.input.on('pointermove', function (pointer) {
+        let blackPaddle = paddles.find(p => p.getData('type') === 'black');
+        blackPaddle.x = Phaser.Math.Clamp(pointer.x, blackPaddle.width/2, config.width - blackPaddle.width/2);
+    });
 
     this.blackScore = 0; // Initialize black score
     this.whiteScore = 0; // Initialize white score
@@ -85,14 +113,16 @@ function create() {
     }
 
     balls.forEach(ball => {
-        this.physics.add.collider(ball, paddle, hitPaddle, null, this);
+        paddles.forEach(paddle => {
+            this.physics.add.collider(ball, paddle, hitPaddle, null, this);
+        });
         this.physics.add.collider(ball, bricks, hitBrick, processCollision, this);
     });
-    // Keyboard controls for paddle
-    cursors = this.input.keyboard.addKeys({
-        left: Phaser.Input.Keyboard.KeyCodes.A,
-        right: Phaser.Input.Keyboard.KeyCodes.D
-    });
+    // // Keyboard controls for paddle
+    // cursors = this.input.keyboard.addKeys({
+    //     left: Phaser.Input.Keyboard.KeyCodes.A,
+    //     right: Phaser.Input.Keyboard.KeyCodes.D
+    // });
 }
 // Function to create a ball
 function createBall(context, x, y, texture, type) {
@@ -113,13 +143,13 @@ function createBall(context, x, y, texture, type) {
 }
 function update() {
     // Paddle movement
-    if (cursors.left.isDown) {
-        paddle.setVelocityX(-1000);
-    } else if (cursors.right.isDown) {
-        paddle.setVelocityX(1000);
-    } else {
-        paddle.setVelocityX(0);
-    }
+    // if (cursors.left.isDown) {
+    //     paddle.setVelocityX(-1000);
+    // } else if (cursors.right.isDown) {
+    //     paddle.setVelocityX(1000);
+    // } else {
+    //     paddle.setVelocityX(0);
+    // }
 }
 
 function hitPaddle(ball, paddle) {
