@@ -2,6 +2,9 @@ let ws;
 const roomId = window.location.pathname.split('/')[2];
 ws = new WebSocket(`ws://${window.location.host}/${roomId}`);
 
+// Add at the beginning of the file, after WebSocket initialization
+const isSpectator = new URLSearchParams(window.location.search).get('mode') === 'spectator';
+
 const config = {
     type: Phaser.AUTO,
     width: window.innerWidth,
@@ -14,10 +17,16 @@ const config = {
             debug: false
         }
     },
-    scene: {
+    scene: isSpectator ? SpectatorScene : {
         preload: preload,
         create: create,
         update: update
+    },
+    disableContextMenu: true,
+    powerPreference: 'high-performance',
+    fps: {
+        target: 60,
+        forceSetTimeOut: true
     }
 };
 
@@ -46,6 +55,9 @@ const brickWidth = 60;
 
 // Add game state object
 const gameState = {
+    frame: 0,  // Add frame counter
+    timestamp: Date.now(),  // Add timestamp for sync
+    fps: 60,   // Target FPS
     paddles: {
         black: { x: 0, y: 0, width: 150, height: 25 },
         white: { x: 0, y: 0, width: 150, height: 25 }
@@ -186,6 +198,10 @@ function createBall(context, ballState) {
 
 // Modify update function to sync game objects with state
 function update() {
+    gameState.frame++;
+    gameState.timestamp = Date.now();
+    gameState.fps = this.game.loop.actualFps;
+
     // Update black paddle position based on mouse state
     const blackPaddle = paddles.find(p => p.getData('type') === 'black');
     const clampedX = Phaser.Math.Clamp(
@@ -203,7 +219,6 @@ function update() {
         gameState.balls[index].velocityX = ball.body.velocity.x;
         gameState.balls[index].velocityY = ball.body.velocity.y;
     });
-    console.log(gameState)
 
     // Send game state through WebSocket
     if (ws.readyState === WebSocket.OPEN) {

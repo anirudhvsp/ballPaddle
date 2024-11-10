@@ -23,6 +23,16 @@ app.get('/game/:roomId', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'game.html'));
 });
 
+// Add this after other routes
+app.get('/api/rooms', (req, res) => {
+    const rooms = Array.from(gameRooms.entries()).map(([roomId, room]) => ({
+        roomId,
+        playerCount: room.players.size,
+        hasGameState: room.gameState !== null
+    }));
+    res.json(rooms);
+});
+
 // WebSocket connection handler
 wss.on('connection', (ws, req) => {
     const roomId = req.url.split('/')[1]; // Get room ID from URL
@@ -44,10 +54,7 @@ wss.on('connection', (ws, req) => {
             // Broadcast state to all other players in room
             room.players.forEach(player => {
                 if (player !== ws && player.readyState === WebSocket.OPEN) {
-                    player.send(JSON.stringify({
-                        type: 'gameState',
-                        state: room.gameState
-                    }));
+                    player.send(message.toString()); // Send the raw message for better performance
                 }
             });
         }
