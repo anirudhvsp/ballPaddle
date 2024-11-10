@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Rooms</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .room-list {
+            margin: 20px 0;
+        }
+        .room {
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Game Rooms</h1>
+    <button onclick="createRoom()">Create New Room</button>
+    <div class="room-list" id="roomList">
+        <!-- Rooms will be listed here -->
+    </div>
+
+    <script>
+        function createRoom() {
+            const roomId = Math.random().toString(36).substring(7);
+            window.location.href = `/game/${roomId}`;
+        }
+
+        // You can add functionality to list active rooms here
+    </script>
+</body>
+</html> 
