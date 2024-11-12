@@ -34,36 +34,40 @@
             window.location.href = `/game/${roomId}`;
         }
         function spectateRoom(roomId) {
-        window.location.href = `/game/${roomId}?mode=spectator`;
-    }
-
-    async function updateRoomList() {
-        try {
-            const response = await fetch('/api/rooms');
-            const rooms = await response.json();
-            
-            const roomList = document.getElementById('roomList');
-            roomList.innerHTML = '';
-            
-            rooms.forEach(room => {
-                if (room.hasGameState) {
-                    const roomElement = document.createElement('div');
-                    roomElement.className = 'room';
-                    roomElement.innerHTML = `
-                        <span>Room: ${room.roomId} (${room.playerCount} players)</span>
-                        <button onclick="spectateRoom('${room.roomId}')">Spectate</button>
-                    `;
-                    roomList.appendChild(roomElement);
-                }
-            });
-        } catch (error) {
-            console.error('Error fetching rooms:', error);
+            window.location.href = `/game/${roomId}?mode=spectator`;
         }
-    }
+        function joinAsPlayer(roomId) {
+            window.location.href = `/game/${roomId}?mode=player`;
+        }
 
-    // Update room list every 5 seconds
-    updateRoomList();
-    setInterval(updateRoomList, 5000);
-</script>
+        async function updateRoomList() {
+            try {
+                const response = await fetch('/api/rooms');
+                const rooms = await response.json();
+                
+                const roomList = document.getElementById('roomList');
+                roomList.innerHTML = '';
+                
+                rooms.forEach(room => {
+                    if (room.hasGameState) {
+                        const roomElement = document.createElement('div');
+                        roomElement.className = 'room';
+                        roomElement.innerHTML = `
+                            <span>Room: ${room.roomId} (${room.playerCount} players)</span>
+                            <button onclick="spectateRoom('${room.roomId}')">Spectate</button>
+                            <button onclick="joinAsPlayer('${room.roomId}')">Join as Player</button>
+                        `;
+                        roomList.appendChild(roomElement);
+                    }
+                });
+            } catch (error) {
+                console.error('Error fetching rooms:', error);
+            }
+        }
+
+        // Update room list every 5 seconds
+        updateRoomList();
+        setInterval(updateRoomList, 5000);
+    </script>
 </body>
 </html> 

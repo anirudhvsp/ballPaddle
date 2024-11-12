@@ -1,6 +1,6 @@
-class SpectatorScene extends Phaser.Scene {
+class SecondPlayerScene extends Phaser.Scene {
     constructor() {
-        super({ key: 'SpectatorScene' });
+        super({ key: 'SecondPlayerScene' });
         this.previousState = null;
         this.currentState = null;
         this.interpolationTime = 0;
@@ -47,27 +47,37 @@ class SpectatorScene extends Phaser.Scene {
 
         // Setup WebSocket
         const roomId = window.location.pathname.split('/')[2];
-        this.ws = new WebSocket(`ws://${window.location.host}/spectate/${roomId}`);
-        this.ws.onmessage = this.handleWebSocketMessage.bind(this);
-    }
+        this.ws = new WebSocket(`ws://${window.location.host}/player/${roomId}`);
 
-    handleWebSocketMessage(event) {
-        const data = JSON.parse(event.data);
-        console.log(data);
-        if (data.type === 'gameState') {
-            this.previousState = this.currentState;
-            this.currentState = data.state;
-            this.interpolationTime = 0;
-            
-            // Sync local frame rate with master client
-            if (this.currentState && this.previousState) {
-                const frameDelta = this.currentState.frame - this.previousState.frame;
-                const timeDelta = this.currentState.timestamp - this.previousState.timestamp;
-                if (timeDelta > 0) {
-                    this.game.loop.targetFps = Math.min(60, 1000 / (timeDelta / frameDelta));
+        // Add WebSocket message handler specific to player mode
+        this.ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'gameState') {
+                this.previousState = this.currentState;
+                this.currentState = data.state;
+                this.interpolationTime = 0;
+                
+                // Sync local frame rate with master client
+                if (this.currentState && this.previousState) {
+                    const frameDelta = this.currentState.frame - this.previousState.frame;
+                    const timeDelta = this.currentState.timestamp - this.previousState.timestamp;
+                    if (timeDelta > 0) {
+                        this.game.loop.targetFps = Math.min(60, 1000 / (timeDelta / frameDelta));
+                    }
                 }
             }
-        }
+        };
+
+        // Add mouse input handler for white paddle
+        this.input.on('pointermove', (pointer) => {
+            if (this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({
+                    type: 'playerInput',
+                    mouseX: pointer.x,
+                    paddleType: 'white'  // Specify that this is for the white paddle
+                }));
+            }
+        });
     }
 
     update(time, delta) {

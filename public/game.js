@@ -1,10 +1,20 @@
-let ws;
-const roomId = window.location.pathname.split('/')[2];
-ws = new WebSocket(`ws://${window.location.host}/${roomId}`);
-
 // Add at the beginning of the file, after WebSocket initialization
 const isSpectator = new URLSearchParams(window.location.search).get('mode') === 'spectator';
-
+const isPlayer = new URLSearchParams(window.location.search).get('mode') === 'player';
+let ws;
+const roomId = window.location.pathname.split('/').pop();
+ws = new WebSocket(`ws://${window.location.host}${isSpectator ? '/spectate/' : (isPlayer ? '/player/' : '/')}${roomId}`);
+// Modify the WebSocket message handler based on game mode
+if (!isSpectator && !isPlayer) {
+    // Main game client handler
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'playerInput') {
+            const paddleType = data.paddleType || 'black'; // Default to black for backward compatibility
+            gameState.paddles[paddleType].mouseX = data.mouseX;
+        }
+    };
+}
 const config = {
     type: Phaser.AUTO,
     width: window.innerWidth,
@@ -17,11 +27,11 @@ const config = {
             debug: false
         }
     },
-    scene: isSpectator ? SpectatorScene : {
+    scene: isSpectator ? SpectatorScene : (isPlayer ? SecondPlayerScene : {
         preload: preload,
         create: create,
         update: update
-    },
+    }),
     disableContextMenu: true,
     powerPreference: 'high-performance',
     fps: {
@@ -59,12 +69,16 @@ const gameState = {
     timestamp: Date.now(),  // Add timestamp for sync
     fps: 60,   // Target FPS
     paddles: {
-        black: { x: 0, y: 0, width: 150, height: 25 },
-        white: { x: 0, y: 0, width: 150, height: 25 }
+        black: { x: 0, y: 0, width: 150, height: 25, mouseX: 0 },
+        white: { x: 0, y: 0, width: 150, height: 25, mouseX: 0 }
     },
     balls: [],
     bricks: [],
     scores: {
+        black: 0,
+        white: 0
+    },
+    combos: {
         black: 0,
         white: 0
     },
@@ -123,9 +137,9 @@ function create() {
         paddles.push(paddle);
     });
 
-    // Update mouse handler to modify state instead of paddle directly
+    // Update mouse handler to modify state for black paddle only
     this.input.on('pointermove', function (pointer) {
-        gameState.mouseX = pointer.x;
+        gameState.paddles.black.mouseX = pointer.x;
     });
 
     // Initialize balls in state
@@ -191,6 +205,8 @@ function createBall(context, ballState) {
     ball.setCollideWorldBounds(true);
     ball.setBounce(1);
     ball.setData('type', ballState.type);
+    ball.setData('combo', 0); // Add combo counter
+    ball.setData('baseSpeed', Math.abs(ballState.velocityY)); // Store original speed
     ball.setDepth(1);
     ball.setVelocity(ballState.velocityX, ballState.velocityY);
     return ball;
@@ -204,13 +220,23 @@ function update() {
 
     // Update black paddle position based on mouse state
     const blackPaddle = paddles.find(p => p.getData('type') === 'black');
-    const clampedX = Phaser.Math.Clamp(
-        gameState.mouseX, 
+    const blackClampedX = Phaser.Math.Clamp(
+        gameState.paddles.black.mouseX, 
         blackPaddle.width/2, 
         config.width - blackPaddle.width/2
     );
-    gameState.paddles.black.x = clampedX;
-    blackPaddle.x = clampedX;
+    gameState.paddles.black.x = blackClampedX;
+    blackPaddle.x = blackClampedX;
+
+    // Update white paddle position based on received input
+    const whitePaddle = paddles.find(p => p.getData('type') === 'white');
+    const whiteClampedX = Phaser.Math.Clamp(
+        gameState.paddles.white.mouseX, 
+        whitePaddle.width/2, 
+        config.width - whitePaddle.width/2
+    );
+    gameState.paddles.white.x = whiteClampedX;
+    whitePaddle.x = whiteClampedX;
 
     // Update ball positions in state
     balls.forEach((ball, index) => {
@@ -231,7 +257,7 @@ function update() {
 
 function hitPaddle(ball, paddle) {
     let diff = ball.x - paddle.x;
-    ball.setVelocityX(10 * diff); // Change angle based on hit position
+    ball.setVelocityX(10 * diff);
 }
 
 // Modify hitBrick to update state
@@ -261,11 +287,3 @@ function processCollision(ball, brick) {
     return ball.getData('type') == brick.getData('type');
 }
 
-// Add WebSocket message handler
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.type === 'gameState') {
-        // Update local game state with received state
-        Object.assign(gameState, data.state);
-    }
-};

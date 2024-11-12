@@ -35,7 +35,9 @@ app.get('/api/rooms', (req, res) => {
 
 // WebSocket connection handler
 wss.on('connection', (ws, req) => {
-    const roomId = req.url.split('/')[1]; // Get room ID from URL
+    const roomId = req.url.split('/').pop(); // Get room ID from URL
+    const isSpectator = req.url.includes('spectate');
+    const isPlayer = req.url.includes('player');
 
     if (!gameRooms.has(roomId)) {
         gameRooms.set(roomId, {
@@ -55,6 +57,13 @@ wss.on('connection', (ws, req) => {
             room.players.forEach(player => {
                 if (player !== ws && player.readyState === WebSocket.OPEN) {
                     player.send(message.toString()); // Send the raw message for better performance
+                }
+            });
+        } else if (data.type === 'playerInput' && isPlayer) {
+            // Relay player input to the main client
+            room.players.forEach(player => {
+                if (player !== ws && player.readyState === WebSocket.OPEN) {
+                    player.send(JSON.stringify(data));
                 }
             });
         }
