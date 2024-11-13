@@ -70,11 +70,17 @@ class SecondPlayerScene extends Phaser.Scene {
 
         // Add mouse input handler for white paddle
         this.input.on('pointermove', (pointer) => {
+            // Directly update white paddle position
+            if (this.paddles.white) {
+                this.paddles.white.x = pointer.x;
+            }
+
+            // Still send position to server for other clients
             if (this.ws.readyState === WebSocket.OPEN) {
                 this.ws.send(JSON.stringify({
                     type: 'playerInput',
                     mouseX: pointer.x,
-                    paddleType: 'white'  // Specify that this is for the white paddle
+                    paddleType: 'white'
                 }));
             }
         });
@@ -101,10 +107,13 @@ class SecondPlayerScene extends Phaser.Scene {
                     paddle.x,
                     paddle.y,
                     type === 'black' ? 'paddleBlack' : 'paddleWhite'
-                ).setDepth(1); // Set depth for z ordering
+                ).setDepth(1);
             }
-            this.paddles[type].x = this.lerp(prevPaddle.x, paddle.x, alpha);
-            this.paddles[type].y = this.lerp(prevPaddle.y, paddle.y, alpha);
+            // Only interpolate the black paddle, white paddle follows mouse directly
+            if (type === 'black') {
+                this.paddles[type].x = this.lerp(prevPaddle.x, paddle.x, alpha);
+                this.paddles[type].y = this.lerp(prevPaddle.y, paddle.y, alpha);
+            }
         });
 
         // Interpolate balls
