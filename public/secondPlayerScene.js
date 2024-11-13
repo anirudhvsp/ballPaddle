@@ -47,7 +47,7 @@ class SecondPlayerScene extends Phaser.Scene {
 
         // Setup WebSocket
         const roomId = window.location.pathname.split('/')[2];
-        this.ws = new WebSocket(`ws://${window.location.host}/player/${roomId}`);
+        this.ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/player/${roomId}`);
 
         // Add WebSocket message handler specific to player mode
         this.ws.onmessage = (event) => {

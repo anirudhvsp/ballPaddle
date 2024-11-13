@@ -47,7 +47,8 @@ class SpectatorScene extends Phaser.Scene {
 
         // Setup WebSocket
         const roomId = window.location.pathname.split('/')[2];
-        this.ws = new WebSocket(`ws://${window.location.host}/spectate/${roomId}`);
+        this.ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/spectate/${roomId}`);
+
         this.ws.onmessage = this.handleWebSocketMessage.bind(this);
     }
 

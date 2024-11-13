@@ -3,7 +3,7 @@ const isSpectator = new URLSearchParams(window.location.search).get('mode') === 
 const isPlayer = new URLSearchParams(window.location.search).get('mode') === 'player';
 let ws;
 const roomId = window.location.pathname.split('/').pop();
-ws = new WebSocket(`ws://${window.location.host}${isSpectator ? '/spectate/' : (isPlayer ? '/player/' : '/')}${roomId}`);
+ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}${isSpectator ? '/spectate/' : (isPlayer ? '/player/' : '/')}${roomId}`);
 // Modify the WebSocket message handler based on game mode
 if (!isSpectator && !isPlayer) {
     // Main game client handler
