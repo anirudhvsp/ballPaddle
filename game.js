@@ -52,6 +52,7 @@ const gameState = {
         black: 0,
         white: 0
     },
+    hits : 0,
     mouseX: 0
 };
 
@@ -80,6 +81,13 @@ function preload() {
     this.graphics.fillStyle(0xFFFFFF, 1);
     this.graphics.fillRect(0, 0, 150, 25);
     this.graphics.generateTexture('paddleWhite', 150, 25);
+    this.graphics.destroy();
+
+    // Add yellow brick texture
+    this.graphics = this.add.graphics();
+    this.graphics.fillStyle(0xFFFF00, 1);
+    this.graphics.fillRect(0, 0, brickWidth, brickHeight);
+    this.graphics.generateTexture('yellowBrick', brickWidth, brickHeight);
     this.graphics.destroy();
 }
 
@@ -200,6 +208,20 @@ function update() {
         gameState.balls[index].velocityY = ball.body.velocity.y;
     });
 
+    // Check for temporary balls that need to be removed
+    const currentTime = Date.now();
+    balls = balls.filter((ball) => {
+        if (ball.getData('temp10') && currentTime - ball.getData('spawnTime') > 5000) {
+            // Remove from gameState.balls array
+            gameState.balls = gameState.balls.filter(b => 
+                !(b.temp10 && currentTime - b.spawnTime > 5000)
+            );
+            // Destroy the ball sprite
+            ball.destroy();
+            return false;
+        }
+        return true;
+    });
 }
 
 function hitPaddle(ball, paddle) {
@@ -210,10 +232,12 @@ function hitPaddle(ball, paddle) {
 // Modify hitBrick to update state
 function hitBrick(ball, brick) {
     if(ball.getData('type') == brick.getData('type')) {
-        const newType = brick.getData('type') === 'black' ? 'white' : 'black';
+        gameState.hits++;
+        
+        let newType = brick.getData('type') === 'black' ? 'white' : 'black';
         
         // Update brick state
-        const brickState = gameState.bricks.find(b => b.x === brick.x && b.y === brick.y);
+        let brickState = gameState.bricks.find(b => b.x === brick.x && b.y === brick.y);
         brickState.type = newType;
         
         // Update score in state
@@ -224,12 +248,52 @@ function hitBrick(ball, brick) {
             gameState.scores.white++;
             this.whiteScoreText.setText(gameState.scores.white);
         }
-        
-        brick.setFillStyle(newType === 'black' ? 0x000000 : 0xFFFFFF);
+        if (gameState.hits % 11 === 0) {
+            newType = 'yellow';
+            brick.setFillStyle(0xFFFF00);
+        } else {
+            brick.setFillStyle(newType === 'black' ? 0x000000 : 0xFFFFFF);
+        }
         brick.setData('type', newType);
+    }else if(brick.getData('type') === 'yellow') {
+        // Split the ball into two
+        const newBall = this.physics.add.image(ball.x, ball.y, ball.texture.key);
+        newBall.setDisplaySize(20, 20);  // Match original ball size
+        newBall.setCollideWorldBounds(true);
+        newBall.setBounce(1);
+        newBall.setData('type', ball.getData('type'));
+        newBall.setDepth(1);
+        newBall.body.setVelocityX(ball.body.velocity.x);
+        newBall.body.setVelocityY(-ball.body.velocity.y);  // Reverse Y velocity for variation
+        
+        // Add temporary tag and timer
+        newBall.setData('temp10', true);
+        newBall.setData('spawnTime', Date.now());
+        
+        // Add colliders for the new ball
+        paddles.forEach(paddle => {
+            this.physics.add.collider(newBall, paddle, hitPaddle, null, this);
+        });
+        this.physics.add.collider(newBall, bricks, hitBrick, processCollision, this);
+        
+        balls.push(newBall);
+
+        // Update game state with the new ball
+        gameState.balls.push({
+            x: newBall.x,
+            y: newBall.y,
+            velocityX: newBall.body.velocity.x,
+            velocityY: newBall.body.velocity.y,
+            type: ball.getData('type'),
+            temp10: true,
+            spawnTime: Date.now()
+        });
+
+        // Destroy the yellow brick
+        brick.destroy();
     }
 }
 
 function processCollision(ball, brick) {
-    return ball.getData('type') == brick.getData('type');
+    return ball.getData('type') === brick.getData('type') || brick.getData('type') === 'yellow';
 }
